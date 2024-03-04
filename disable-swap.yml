@@ -1,0 +1,24 @@
+---
+- hosts: control:worker
+  become: yes
+  tasks:
+    - name: Find plain swap UUID
+      shell: grep 'swap    sw' /etc/fstab | awk '{ printf $1 }' | cut -d '#' -f 2
+      register: swap_uuid
+
+    - name: Find commented swap UUID section
+      ignore_errors: true
+      shell: grep '#{{ swap_uuid.stdout }}' /etc/fstab
+      register: commented_uuid
+
+    - name: Permanently disable swap
+      when: commented_uuid.stdout == ''
+      replace:
+        path: /etc/fstab
+        backup: yes
+        regexp: '{{ swap_uuid.stdout }}'
+        replace: '#{{ swap_uuid.stdout }}'
+
+    - name: Apply changes to partitions
+      when: commented_uuid.stdout == ''
+      shell: swapoff -a

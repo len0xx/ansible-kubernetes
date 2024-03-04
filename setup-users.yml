@@ -1,0 +1,44 @@
+---
+- hosts: control
+  become: yes
+  tasks:
+    - name: Create the user
+      user: name=control append=yes state=present createhome=yes shell=/bin/bash
+
+    - name: Allow the user to have passwordless sudo
+      lineinfile:
+        dest: /etc/sudoers
+        line: 'control ALL=(ALL) NOPASSWD: ALL'
+        validate: 'visudo -cf %s'
+
+    - name: Set up authorized keys for the user
+      authorized_key: user=control key="{{item}}"
+      with_file:
+        - ~/.ssh/id_rsa.pub
+
+    - name: Set a hostname
+      hostname:
+        name: control-1
+        use: systemd
+
+- hosts: worker
+  become: yes
+  tasks:
+    - name: Create the user
+      user: name=worker append=yes state=present createhome=yes shell=/bin/bash
+
+    - name: Allow the user to have passwordless sudo
+      lineinfile:
+        dest: /etc/sudoers
+        line: 'worker ALL=(ALL) NOPASSWD: ALL'
+        validate: 'visudo -cf %s'
+
+    - name: Set up authorized keys for the user
+      authorized_key: user=worker key="{{item}}"
+      with_file:
+        - ~/.ssh/id_rsa.pub
+
+    - name: Set a hostname
+      hostname:
+        name: "{{ inventory_hostname }}"
+        use: systemd

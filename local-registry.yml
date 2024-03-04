@@ -1,0 +1,64 @@
+---
+- hosts: registry
+  vars:
+    repo_path: /opt/repo
+    domain: {{ ansible_user }}.local
+    username: myuser
+    password: thepassword
+  tasks:
+    - name: Install htpasswd
+      become: yes
+      apt:
+        name: apache2-utils
+        update_cache: true
+    - name: Create a directory ssl
+      file:
+        path: {{ repo_path }}/ssl
+        state: directory
+        mode: '0755'
+        owner: {{ ansible_user }}
+        group: {{ ansible_user }}
+    - name: Create a directory auth
+      file:
+        path: {{ repo_path }}/auth
+        state: directory
+        mode: '0755'
+        owner: {{ ansible_user }}
+        group: {{ ansible_user }}
+    - name: Create a directory data
+      file:
+        path: {{ repo_path }}/data
+        state: directory
+        mode: '0755'
+        owner: {{ ansible_user }}
+        group: {{ ansible_user }}
+    - name: Copy a compose file
+      copy:
+        src: {{ ansible_user }}-compose.yml
+        dest: {{ repo_path }}/compose.yml
+        owner: {{ ansible_user }}
+        group: {{ ansible_user }}
+    - name: Sign a certificate
+      shell: openssl req -new -x509 -days 1461 -nodes -out public.pem -keyout private.key -subj "/C=RU/ST=SPb/L=SPb/O=Global Security/OU=IT Department/CN={{ domain }}"
+      args:
+        chdir: {{ repo_path }}/ssl
+        creates:
+          - {{ repo_path }}/ssl/private.key
+          - {{ repo_path }}/ssl/public.key
+    - name: Create authentication file
+      shell: htpasswd -Bbn {{ username }} {{ password }} > {{ repo_path }}/auth/htpasswd
+      args:
+        creates: {{ repo_path }}/auth/htpasswd
+    - name: Start the container
+      become: yes
+      shell: docker compose up -d
+      args:
+        chdir: {{ repo_path }}
+
+- hosts: control:worker
+  become: yes
+  tasks:
+    - name: Patch /etc/hosts file
+      copy:
+        src: patched-hosts
+        dest: /etc/hosts

@@ -1,0 +1,4 @@
+server = "https://registry-domain"
+
+[host."https://registry-domain:registry-port"]
+  capabilities = ["pull", "resolve"]

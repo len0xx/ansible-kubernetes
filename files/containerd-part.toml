@@ -1,0 +1,7 @@
+[plugins."io.containerd.grpc.v1.cri".registry]
+  [plugins."io.containerd.grpc.v1.cri".registry.configs]
+    [plugins."io.containerd.grpc.v1.cri".registry.configs."registry-domain:registry-port".tls]
+      insecure_skip_verify = true
+    [plugins."io.containerd.grpc.v1.cri".registry.configs."registry-domain:registry-port".auth]
+      username = "registry-user"
+      password = "registry-password"

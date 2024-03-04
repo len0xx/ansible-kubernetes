@@ -1,0 +1,63 @@
+- hosts: worker
+  vars:
+    registry_user: myuser
+    registry_password: thepassword
+    registry_domain: registry.local
+    registry_port: 5000
+  become: yes
+  tasks:
+    - name: Copy the config parts to remote
+      copy:
+        src: files/containerd-part.toml
+        dest: $HOME/containerd-part.toml
+
+    - name: Check updated config presence
+      shell: grep registry /etc/containerd/config.toml
+      ignore_errors: true
+      register: config_updated
+
+    - name: Set fact
+      ignore_errors: true
+      set_fact:
+        config_update_out: "{{ config_updated.stdout_lines[0] }}"
+
+    - name: Add local registry to containerd config
+      when: hostvars[inventory_hostname].config_update_out is not defined
+      shell: cat $HOME/containerd-part.toml >> /etc/containerd/config.toml
+
+    - name: Update config file
+      when: hostvars[inventory_hostname].config_update_out is not defined
+      shell: |
+        sed -i 's/registry-domain/{{ registry_domain }}/g' config.toml
+        sed -i 's/registry-port/{{ registry_port }}/g' config.toml
+        sed -i 's/registry-user/{{ registry_user }}/g' config.toml
+        sed -i 's/registry-password/{{ registry_password }}/g' config.toml
+      args:
+        chdir: /etc/containerd
+
+    - name: Create domain directory
+      file:
+        path: /etc/containerd/certs.d/{{ registry_domain }}
+        state: directory
+
+    - name: Copy hosts file
+      copy:
+        src: files/hosts.toml
+        dest: /etc/containerd/certs.d/{{ registry_domain }}/hosts.toml
+
+    - name: Update hosts config file
+      shell: |
+        sed -i 's/registry-domain/{{ registry_domain }}/g' hosts.toml
+        sed -i 's/registry-port/{{ registry_port }}/g' hosts.toml
+      args:
+        chdir: /etc/containerd/certs.d/{{ registry_domain }}
+
+    - name: Update /etc/hosts file
+      copy:
+        src: files/patched-hosts
+        dest: /etc/hosts
+
+    - name: Restart containerd
+      systemd_service:
+        name: containerd
+        state: restarted

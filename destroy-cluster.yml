@@ -1,0 +1,28 @@
+---
+- hosts: control
+  tasks:
+    - name: Register worker nodes
+      shell: kubectl get nodes | grep -Ev 'control-plane|VERSION' | awk '{ printf $1"\n" }'
+      register: worker_nodes
+
+    - name: Drain nodes
+      shell: kubectl drain --ignore-daemonsets  --delete-local-data {{ item }}
+      loop: "{{ worker_nodes.stdout_lines }}"
+
+    - name: Delete nodes
+      shell: kubectl delete node {{ item }}
+      loop: "{{ worker_nodes.stdout_lines }}"
+
+    - name: Reset the control plane
+      become: yes
+      shell: kubeadm reset -f
+
+    - name: Reset the cni configuration
+      become: yes
+      shell: rm -rf /etc/cni/net.d
+
+- hosts: worker
+  become: yes
+  tasks:
+    - name: Reset the node
+      shell: kubeadm reset -f
