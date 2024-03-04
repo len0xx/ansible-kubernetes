@@ -1,6 +1,8 @@
-# Ansible-Kubernetees
+# Ansible-Kubernetes
 
 A collection of Ansible roles to deploy a baremetal kubernetes cluster (and optionally set up a local container registry)
+
+NOTE: These roles are currently developed for Debian distributions
 
 ## Prerequisites
 
@@ -11,7 +13,7 @@ sudo apt-get install ansible
 
 ### Creating an inventory
 
-You will need at least 2 groups containing at least 1 machine. Example:
+You will need at least 2 groups, each of them containing at least 1 machine. Example:
 
 ```
 [control]
